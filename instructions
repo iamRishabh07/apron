@@ -1,0 +1,185 @@
+Transcript
+Jacob: ...making sure that the um the middleware and the UI are integrated correctly. Um so to do that, I want to be able to track their versions uh in the same context.
+
+So, I'm thinking that it might make sense to move the middleware into the same repository as the front-end UI. Um because it allows, first, it allows to us to create a CI/CD pipeline that um that pulls from both things and integrates them into one uh Docker image uh without me having to manage both repositories. And it also um as we're adding new features, it uh it allows both of the uh it allows makes it easier to track both of the applications' process uh moving forward. Um so, are I'm curious what your thoughts are um like are there any drawbacks that I'm missing?
+
+Sagar: Um yes, Jacob. Uh definitely it'll make more sense, whatever you just mentioned. So, it will be easy for us as well, you know, to track the changes or to avoid the uh I would say uh like, you know, any commits or being ignored. The reason because, you know, uh separately we are supposed to uh take a pull from the middleware branch and actually, when I'm running locally, right? So, sometimes what happens, like, you know, we may miss a couple of the commits then, or until unless Rishabh didn't tell me, I won't be aware, right? That, you know, he made some changes or anything like that, irrespective of uh I would say like definitely it will make sense to put all those things together into the one repository only. So, whenever we take a pull or anything, at all both will be having the updated version of middleware and the UI part.
+
+Jacob: Yeah. The the main issue I see with uh getting all of the The main like workflow issue I see is just um there's more of a possibility of merge conflicts. Um you know, you should be able to um if if both of you are working in independent folders, then you should be able to just fast-forward pretty easily. Um but that is one potential drawback. Um but but I see...
+
+Sagar: Um Jacob, however like Yeah, uh sorry sorry to interrupt, but just to clarify on...
+
+Jacob: All right. All right, I am not sure if I can hear you.
+
+Rishabh: Yeah, there was a brief drop, Sagar. Can you repeat?
+
+Sagar: Yeah, uh UI fold... Sorry sorry, yeah.
+
+Rishabh: Uh I think you're cutting in and out, Sagar. Uh can you...
+
+Sagar: Audible now?
+
+Rishabh: Yeah, feels better now um... I think your last like three four seconds...
+
+Sagar: Yeah, so yes yes. So, what I was saying, like, as in like, you know, the uh the conflicts or the merging issue which Jacob is mentioning, I believe we have less chances for that. The reason is, I'll be more mostly focus on the uh UI uh directories and uh, you know, Rishabh is working on the middleware part and there's no way that uh we are working on, you know, uh vice versa. As in, any of us like, you know, will work on any of the middleware or he can work on the UI part, because we are more focused on the UI and the middleware part of that uh repository separately. So, yeah, that's my understanding. I mean...
+
+Jacob: Yeah. That makes sense. Rishabh, what do you think?
+
+Rishabh: Uh yeah, and that will make sense, and uh it would be easier for all of us. So, yeah, I am also I'm in for it.
+
+Jacob: Okay. Okay, so what I'll do is I'll um I'll create a uh subdirectory for the middleware project and a subdirectory for the UI project um in in the uh repository that Sagar's been working in. Um so, I'll just take the repository that's now called "backend" and move that into the just UI version.
+
+Rishabh: Okay.
+
+Jacob: And then um and then I'll move the Dockerfile from the uh uh backend repository and move that into the base directory of the unified project.
+
+Sagar: And, Jacob, just wanted to check as in, do you have any plan of merging the PRs into the develop? So, just wanted to make sure, as in, you know, while merging the things, before that if we do, probably it won't create any issue while merging this into the main branch or the develop, more specifically.
+
+Jacob: Yeah, I'll uh I'll do that um uh I assume you've I haven't checked this morning, but have you resolved the issue that I posted, or at least attempted to resolve it?
+
+Sagar: Yes, I did, but I was unable to uh test it as uh, I just mentioned, due to the the kind of the use case which you were getting, okay, I was not able to get that use case in our test server. So, probably I'll need your help to test that piece. And also, Jacob, just a request, as in uh the one point which we discussed the other day, right, about having the uh that technical error being more frequently rather than after the 10 minutes or 12 minutes. So, if you do that or shorten the test file, that will be easy for me to debug or test it.
+
+Jacob: Yeah, let's uh let's see. See, so I'm updating the test server now. Um so, second. Yeah, sorry, I had made the updates in the code, but I don't think I had actually deployed them uh to the test server. Um so, I'm trying to reload that now. Um let me just make sure it's working. Okay. Yeah, so the other thing I wanted to talk about um that I'm not sure I only have until 10:30 today, so I'm not sure we have time to fully get into this. But I wanted to try and work on some of the things that I think could be done to improve the both the UI and the backend um and try and make them more reliable.
+
+Um so, the main idea I have for the UI is, we we already know uh what So, the to give some context on the issue I'm trying to solve is um we've had some reliability issues around the handling of missing data. Um and it seems like we're just running into a lot of edge cases um that are difficult to test. Um so, the thing the thing that I'm thinking is that um we already know the maximum time period that the data could occur in. So, we already know that we're supporting up to 12 hours of data, and we know the frequency of that data. So, we know that we're going to get samples every 5 seconds. So, um I think one of the ways we could increase the reliability is by essentially pre-allocating a buffer for each patient and then filling that with NaN values um to begin with. And then once we get historical data and once we get real-time data, we can fill that buffer in with the correct values and use that to render the charts and graphs rather than, you know, dynamically loading them from from the new data we get with the history.
+
+Um so, I to clarify what I mean is like, you graph what you would do is when you load up the page, you would have a buffer full of NaNs and you would graph that um and when you So, you would end up with a graph with, you know, no line. And then you would start the real-time data feed um which would where you every time you receive a new value, you would use the timestamp on that value to map it into a location in the data buffer. Um and then you would asynchronously call the historical data endpoint, and then when you receive that historical data, you would insert it into the buffer by timestamp uh rather than just by the order um and in doing that, you would be you would end up with the exact buffer you would need in order to chart everything.
+
+And then what you would also have to So, that like covers loading the graph um but then you would also need to handle the progression of time. So, ultimately it would need to be a circular buffer that would be um you would need to have some process where you're appending NaN to the end of that buffer um at a regular rate. And then you would um fill that in with new data as it arrives. So, there is a race condition there where you would have a timer inserting NaN and then you would have an event coming at another time. Um so, that would need to be handled, but I don't think that's so difficult to deal with.
+
+Sagar: Okay.
+
+Jacob: Um so, the the idea is essentially to try and make it so that the UI is always starting from a NaN graph and then using the timestamps that come from the middleware to fill in that NaN graph uh as necessary. Does that make sense?
+
+Sagar: Yeah, yeah. It it makes sense. Got it.
+
+Jacob: So, the the thing I'm trying to solve here is the the gaps in data problem. Um so, it means that the middleware wouldn't need to handle, you know, inserting null values or doing anything complicated because the the UI would be plotting data messages based on timestamp rather than order.
+
+Sagar: Uh, Jacob, I just want like, I'm just bit worried about the performance-wise. Okay, if we go with this approach, the reason is because, for example, let's say uh for the first 12 hours of data we are passing the NaNs as for example, okay. And then again for entire that 12 hours we are supposed to uh I would say loop each and every uh point by considering the timestamp and fill in the values, right?
+
+Jacob: Yeah.
+
+Sagar: So, I believe because in SciChart we are having some FIFO option, as in the first uh the FIFO capacity which it refers, which uh inherently cached or, you know, the stores the data. Okay, the chart itself. So, I'll I'll still explore this point further more, okay, and we'll try to understand how we can achieve this without impacting the performance. But I believe a risk of performance will be there in that case. Not sure how much, if that will happen or not, but at very first thought, and I that thought I am getting in my mind.
+
+Jacob: Yeah. So, I think what we So, the conflict that I see here is what I'm laying out is essentially a data management process that would be managed by us. So, we would be managing those data buffers. Um the the problem comes in where um you need to essentially copy the data buffer that we're managing into SciChart um because SciChart has its own data buffer.
+
+Sagar: Right.
+
+Jacob: Um so, the problem, you know, you could I see two ways to there are multiple ways to implement this. Like, for example, you could um you could use the SciChart buffer as the buffer I'm talking about um but then you end up with problems on the tile view where you would have to repeat all of this logic separately um to do the tile view. So, um...
+
+Sagar: Actually, in the tile view, on just because of the performance thing and all, I have replaced the uh the charts with the SVG. Uh if you remember, we had that discussion.
+
+Jacob: Yeah.
+
+Sagar: So...
+
+Jacob: Yeah, so that um so, the problem the problem with the strategy I'm laying out here is that um you you could like, the conflict is between the SciChart buffer and the local buffer. You know, because we're implementing our own rendering with the SVGs, it's not very hard to use this new buffering scheme with the SVGs. The problem is the interaction between this buffering scheme and SciChart. So, I I think that um I think that there's probably a solution um that's somewhere in the middle. Like, I'm I'm not saying we have to do this, but but I think this strategy would solve some of our uh some of the problems we're running into because um you know, we we kind of need it the other thing that this would allow us to do is move decouple the um the querying data from the backend with the logic that's actually drawing the charts, um which would also help us to test each one individually. So, so you would have like this buffering scheme would have an API, you know, internally, and you would be able to essentially mock this buffering scheme to test the charting part, if that makes sense.
+
+Sagar: Right, yep, yep, yep. So, I'll quickly uh just, you know, recall all the discussion that we have. So, the problem we are having is uh the data gap issue, okay, as in when the server stops, we are unable to locate exact gaps. Correct me if I'm wrong. Okay? And also, uh what the solution that uh we are trying to have here is instead of loading directly with the coming data, we'll first load these charts with the NaN value, so which means we won't be getting any line because NaN means there is a gap in the SciChart. And as and when we'll receive uh values from the middleware or the backend, okay, so what we will do, we will plot these values exactly along uh by referring its timestamp onto the SciChart. So, with this logic, what will happen, as in we will get the exact uh gaps where there is no timestamp available in the data, right?
+
+Jacob: Yeah. So, the other thing, the other thing that my other goal with this is it allows us to break out some of the APIs that are kind of combined into one uh in the middleware and client interaction right now. So, my goal with this is also to be able to make the actual loading of historical data asynchronous.
+
+Sagar: Okay.
+
+Jacob: So, so what you would do is you would load you would have a relatively quick query where you're loading all of the information about the the UI um and then you would essentially be able to load the chart and start charting real-time data, and then you would be able to make a backend query for the historical data and chart that asynchronously.
+
+Sagar: Okay. Async you want me to do it, okay. Hm.
+
+Jacob: So, the the main thing that I want to do is um right now there are a lot of uh like big blobs of JSON that we're using to uh communicate between the backend and the front end um and I'd like to break those into more discrete parts um so that it's easier to optimize the interaction between the UI and the backend.
+
+Sagar: Okay, so you want me to compress those or optimize that?
+
+Jacob: Yeah, so So, the the idea is um you know, the there's uh the thing that I'm worried about is I think there's like an API call that gets the beds um and that API call is giving you limits, it's giving you values, it's giving you historical data...
+
+Sagar: Yeah, it's kind of heavy, uh it has all data.
+
+Jacob: So, so, you know, there's that that single query involves multiple database queries, it involves joins, it involves a lot of different things.
+
+Sagar: Yes.
+
+Jacob: Um and so I want to give us the opportunity to split that up um because if if you think about it, it's that one call is kind of blocking and it allows it kind of forces you to finish all of this information querying before before you can actually load the page.
+
+Rishabh: Hm.
+
+Sagar: So, you want me to delegate those part by making it async and uh and we can uh it will try to load a page and all, so mostly...
+
+Jacob: Yeah, like I I want to break it into discrete parts. So, like if you think about the way that let's say the tile view loads.
+
+Sagar: Okay.
+
+Jacob: So, so from my perspective, the thing that's most important to me is that the tiles load really quickly. So, there's like layout work that you need to do um when you first load the page, and that layout work depends on the number of beds there are and the status of those beds. Um so, that's something that you need to complete really early on, and that's essential to the page appearing quickly.
+
+The the second thing that you would want to do is fill in all of the values that you see on the page. So, you want like the navigation items to be filled in correctly, you want the limits to appear correctly, and you want to be able to show the like values. Um so, that's when you would want to start the querying of the current values, so like the real-time values.
+
+Sagar: Hm.
+
+Jacob: And then the thing that's the lowest priority is actually doing the charts, cuz, you know, if if you show if you show everything I've described really quickly, it can take another second or two for you to show all of the history data, and it's not really going to bother a user very much.
+
+Sagar: Okay.
+
+Jacob: Um so, I want to be able to set up an architecture where we can incrementally load those things in um so that we can try and avoid a bunch of the spinners that we have in the current UI. Like right now, we have a spinner when you open up the dashboard, we have a spinner when you open up the single patient view, and then we have additional spinners on the graphs. Um so, I think there's there's some very If we break things up into multiple API calls, there are some very easy ways that we can improve the user experience without having to actually optimize very much of the code surrounding that.
+
+Rishabh: Sure. Okay. Yeah, I need to work on these. So, mostly need to optimize the API and need to uh break it into So, and mostly we need to make it async. Yeah.
+
+Jacob: Well, so the the API itself doesn't need to be asynchronous. The idea is that the front end just needs to be able to query things asynchronously.
+
+Rishabh: Yeah, front end more async. Yes, yes, yes. I I I got it.
+
+Jacob: So, the the other thing um the other thing I want to uh add into this whole optimization project is that um I want to remove as many uh JSON blobs from the database as possible.
+
+Sagar: Okay.
+
+Jacob: Um so, like any field in the database where we're just storing a JSON string, um you know, I want us to take a look at that and figure out if we can just make that into a table um because it in the future, the more information is encoded in that JSON string, the harder it is for you to, you know, sort and do other things with that going forward. Like, what's the point of having a relational database uh if you're not able to use any of those relational features?
+
+Rishabh: Hm. So, we need to move JSON into schema and and all, right? So, we can clarify query the fields, uh and it should be some columns and not blob and all?
+
+Jacob: Yeah, exactly. So, so like you should we're already using a database with a schema. Like, you shouldn't have to make a call to the database and then check the schema a second time.
+
+Rishabh: Okay. Got it.
+
+Jacob: Um so, I I have to go, so, you know, I I sorry to end this so abruptly. Um but I think there's enough to think about here going forward um and then we can talk more tomorrow.
+
+Sagar: Yeah, right. We will also explore um the topics which we discussed, and probably tomorrow we'll have more concrete information. We'll try to have it.
+
+Jacob: Okay. Thanks. Bye.
+
+Sagar: Yes, bye.
+
+Rishabh: Thank you.
+
+Meeting Summary
+1. Repository Unification & CI/CD Pipeline
+Jacob proposed merging the middleware and the front-end UI into a single repository to ensure synchronized version tracking and seamless integration. This change simplifies development workflows and allows the creation of a single CI/CD pipeline that builds both components into a single Docker image. Sagar and Rishabh approved the move, noting it will eliminate instances where local developer environments miss updates due to untracked branch pulls.
+
+2. UI Graph Reliability & Gaps Handling
+To solve the issue of data gaps occurring during server downtime, Jacob suggested changing the rendering scheme. Instead of dynamically appending incoming data points, the UI will pre-allocate a circular data buffer representing a fixed 12-hour window (sampling every 5 seconds) initialized entirely with NaN (null) values. Real-time and historical entries will then be mapped strictly into specific indices based on their absolute timestamps. Sagar expressed performance concerns regarding continuous array looping over 12 hours of data points and potential conflicts with SciChart's native caching/FIFO mechanism. However, he noted that the tile view already uses custom SVGs, making the implementation easier there.
+
+3. API Deconstruction & Performance Optimization
+The current backend features heavily clustered endpoints (e.g., the "beds" API) that fetch layout bounds, current parameters, limits, and historical data all in a single block, creating heavy database queries with complex joins. This blocks page loading and forces multiple loading animations ("spinners"). The team agreed to break these down into smaller, progressive frontend queries:
+
+High Priority: Grid layout and bed status (loads instantly).
+
+Medium Priority: Real-time values, configurations, and navigation details.
+
+Low Priority: Heavy historical chart data fetched asynchronously.
+
+4. Database Schema Cleanup
+Jacob highlighted an anti-pattern in the current architecture where relational database tables store complex JSON strings as plain text blobs. This prevents native indexing, filtering, and sorting. The team agreed to map out these unstructured fields and convert them into properly typed columns or related tables.
+
+Action Items
+Jacob
+[ ] Reshuffle Git Repositories: Migrate the middleware repository into a subdirectory of the UI repository. Rename the primary tracking directories cleanly to isolate the UI and middleware logic.
+
+[ ] Consolidate Docker Configuration: Relocate the Dockerfile from the old backend root folder into the base directory of the new unified repository. Establish the updated path dependencies for the unified multi-stage Docker build.
+
+[ ] Stabilize Test Server Environment: Ensure the recent error-handling patches are fully deployed to the staging environment. Tweak the server configuration to artificially trigger technical flags much faster (reducing the delay down from 10–12 minutes) to unblock Sagar's debugging tasks.
+
+Sagar
+[ ] Review SciChart & Performance Benchmarks: Investigate SciChart’s native FIFO capacities and internal data caching properties. Evaluate whether copying a custom 12-hour data array containing NaN properties impacts UI responsiveness or chart processing overhead.
+
+[ ] Confirm Local Fixes: Partner with Jacob to validate the recent edge-case patch on the staging environment once the accelerated technical error flags are live.
+
+Rishabh
+[ ] Deconstruct Heavy Middleware Enpoints: Audit the monolith "beds" API. Break down the database operations to separate structural metadata queries from heavy statistics, telemetry readings, and calculations.
+
+[ ] Normalize Database Tables: Identify columns currently storing serialized JSON strings. Draft a migration schema to translate these blobs into structured relational tables or explicitly typed columns.
